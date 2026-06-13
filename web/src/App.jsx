@@ -10,6 +10,8 @@ import Charity from './pages/Charity';
 import Sponsors from './pages/Sponsors';
 import Crowdfunding from './pages/Crowdfunding';
 import Influencers from './pages/Influencers';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
 
 export default function App() {
   return (
@@ -26,6 +28,8 @@ export default function App() {
           <Route path="/sponsors" element={<Sponsors />} />
           <Route path="/invest" element={<Crowdfunding />} />
           <Route path="/creators" element={<Influencers />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </main>
       <Footer />

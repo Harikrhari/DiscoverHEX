@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
-import { ShoppingCart, Menu, X, Zap } from 'lucide-react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { ShoppingCart, Menu, X, Zap, User, LogOut } from 'lucide-react';
 import useStore from '../../store/useStore';
 
 const navLinks = [
@@ -15,6 +15,9 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const cartCount = useStore((s) => s.cartCount());
   const openCart = useStore((s) => s.openCart);
+  const user = useStore((s) => s.user);
+  const logout = useStore((s) => s.logout);
+  const navigate = useNavigate();
 
   return (
     <>
@@ -72,6 +75,32 @@ export default function Navbar() {
               >
                 Invest in HEX
               </Link>
+
+              {user ? (
+                <div className="hidden sm:flex items-center gap-2">
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center gap-1.5 text-sm text-gray-300 hover:text-hex-primary transition-colors px-2 py-2"
+                  >
+                    <User size={18} />
+                    <span className="hidden lg:inline">{user.name || user.email?.split('@')[0]}</span>
+                  </Link>
+                  <button
+                    onClick={() => { logout(); navigate('/'); }}
+                    className="text-gray-400 hover:text-hex-accent transition-colors p-2"
+                    aria-label="Logout"
+                  >
+                    <LogOut size={18} />
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="hidden sm:block text-sm text-gray-300 hover:text-hex-primary transition-colors px-2 py-2"
+                >
+                  Sign In
+                </Link>
+              )}
 
               {/* Mobile hamburger */}
               <button
