@@ -1,0 +1,113 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ─── Helper Functions ─────────────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isImageFile() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isVideoFile() {
+      return request.resource.contentType.matches('video/.*');
+    }
+
+    function isAllowedMediaFile() {
+      return isImageFile() || isVideoFile();
+    }
+
+    function fileSizeUnder(maxMB) {
+      return request.resource.size < maxMB * 1024 * 1024;
+    }
+
+    // ─── Product Images ───────────────────────────────────────────────────────
+    // Public read; only admins and Cloud Functions can write
+
+    match /products/{productId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() &&
+        isImageFile() &&
+        fileSizeUnder(10); // 10 MB max per product image
+    }
+
+    // ─── User Uploads (avatars, proof images, etc.) ───────────────────────────
+
+    match /users/{userId}/avatar/{fileName} {
+      allow read: if true; // Avatars are public
+      allow write: if isOwner(userId) &&
+        isImageFile() &&
+        fileSizeUnder(5); // 5 MB max avatar
+    }
+
+    match /users/{userId}/uploads/{allPaths=**} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) &&
+        isAllowedMediaFile() &&
+        fileSizeUnder(50); // 50 MB max user upload
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // ─── Creator Content ──────────────────────────────────────────────────────
+
+    match /creators/{creatorId}/media/{allPaths=**} {
+      allow read: if true; // Creator media is public
+      allow write: if isOwner(creatorId) &&
+        isAllowedMediaFile() &&
+        fileSizeUnder(100); // 100 MB max for creator videos
+      allow delete: if isOwner(creatorId) || isAdmin();
+    }
+
+    // ─── Sponsor Assets ───────────────────────────────────────────────────────
+
+    match /sponsors/{sponsorId}/assets/{allPaths=**} {
+      allow read: if true; // Sponsor banners/logos are public
+      allow write: if isAdmin() &&
+        isAllowedMediaFile() &&
+        fileSizeUnder(20);
+    }
+
+    // ─── Charity Campaign Media ───────────────────────────────────────────────
+
+    match /charity/{campaignId}/{allPaths=**} {
+      allow read: if true; // Charity images are public
+      allow write: if isAdmin() &&
+        isImageFile() &&
+        fileSizeUnder(10);
+    }
+
+    // ─── Social Post Staging Area ─────────────────────────────────────────────
+    // Cloud Functions write here; readable by authenticated users
+
+    match /socialPosts/{postId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin(); // Only admin/functions write here
+    }
+
+    // ─── Order Attachments (receipts, shipping labels) ────────────────────────
+
+    match /orders/{orderId}/{allPaths=**} {
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == resource.metadata['userId'] || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // ─── Catch-all: deny everything else ─────────────────────────────────────
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
