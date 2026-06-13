@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #f8f9fa;
+    color: #1A1A2E;
+  }
+}
+
+@layer utilities {
+  .hex-gradient {
+    background: linear-gradient(135deg, #FF6B35 0%, #E94560 50%, #1A1A2E 100%);
+  }
+  .sponsor-badge {
+    @apply bg-hex-gold text-white text-xs font-bold px-2 py-0.5 rounded-full;
+  }
+  .charity-badge {
+    @apply bg-hex-green text-white text-xs font-bold px-2 py-0.5 rounded-full;
+  }
+}
