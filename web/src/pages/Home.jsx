@@ -1,182 +1,444 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Star, Users, TrendingUp } from 'lucide-react';
+import {
+  ArrowRight,
+  Heart,
+  Users,
+  ShoppingBag,
+  Zap,
+  Star,
+  TrendingUp,
+  ChevronRight,
+} from 'lucide-react';
+import useStore from '../store/useStore';
+import {
+  products,
+  categories,
+  sponsors,
+  charityCampaigns,
+  charityStats,
+} from '../data/mockData';
 import ProductCard from '../components/marketplace/ProductCard';
-import CharityCounter from '../components/charity/CharityCounter';
-import { products, categories, sponsors, creators } from '../data/mockData';
+
+const featuredProducts = products.slice(0, 4);
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function StatBadge({ value, label }) {
+  return (
+    <div className="flex flex-col items-center gap-1 px-6 py-4">
+      <span className="text-2xl sm:text-3xl font-extrabold text-hex-primary">{value}</span>
+      <span className="text-xs sm:text-sm text-gray-300 font-medium text-center">{label}</span>
+    </div>
+  );
+}
+
+function CategoryCard({ category }) {
+  return (
+    <Link
+      to={`/marketplace?category=${category.id}`}
+      className="group flex flex-col items-center gap-3 p-5 rounded-2xl bg-white border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer"
+      style={{ borderColor: `${category.color}40` }}
+    >
+      <div
+        className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl shadow-sm group-hover:scale-110 transition-transform duration-300"
+        style={{ backgroundColor: `${category.color}18` }}
+      >
+        {category.icon}
+      </div>
+      <span className="text-sm font-semibold text-hex-secondary text-center leading-tight group-hover:text-hex-primary transition-colors">
+        {category.label}
+      </span>
+      <ChevronRight
+        size={14}
+        className="text-gray-400 group-hover:text-hex-primary transition-colors"
+      />
+    </Link>
+  );
+}
+
+function CharityProgressBar({ raised, goal, color }) {
+  const percent = Math.min(Math.round((raised / goal) * 100), 100);
+  return (
+    <div className="w-full">
+      <div className="flex justify-between text-xs text-gray-500 mb-1">
+        <span className="font-semibold" style={{ color }}>
+          {percent}% funded
+        </span>
+        <span>Goal: ${goal.toLocaleString()}</span>
+      </div>
+      <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${percent}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CharityCampaignCard({ campaign }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+      <div className="h-1.5" style={{ backgroundColor: campaign.color }} />
+      <div className="p-5">
+        <div className="flex items-start gap-3 mb-4">
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 shadow-sm"
+            style={{ backgroundColor: `${campaign.color}18` }}
+          >
+            {campaign.icon}
+          </div>
+          <div>
+            <h3 className="font-bold text-hex-secondary text-base leading-tight group-hover:text-hex-primary transition-colors">
+              {campaign.title}
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">{campaign.location}</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-600 mb-4 leading-relaxed line-clamp-2">
+          {campaign.description}
+        </p>
+        <CharityProgressBar
+          raised={campaign.raised}
+          goal={campaign.goal}
+          color={campaign.color}
+        />
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-50">
+          <div className="flex items-center gap-1.5">
+            <Heart size={13} className="text-hex-green" fill="currentColor" />
+            <span className="text-xs font-semibold text-hex-green">
+              ${campaign.raised.toLocaleString()} raised
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Users size={13} className="text-gray-400" />
+            <span className="text-xs text-gray-500">
+              {campaign.beneficiaries} beneficiaries
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SponsorChip({ sponsor }) {
+  return (
+    <div className="flex-shrink-0 flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-4 py-2.5 shadow-sm hover:shadow-md transition-shadow">
+      <img
+        src={sponsor.logo}
+        alt={sponsor.name}
+        className="h-7 object-contain"
+        loading="lazy"
+      />
+      <div>
+        <p className="text-xs font-bold text-hex-secondary leading-tight">{sponsor.name}</p>
+        <p className="text-[10px] text-gray-400 capitalize">{sponsor.tier} partner</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const featured = products.filter((p) => p.badge).slice(0, 4);
+  const addToCart = useStore((s) => s.addToCart);
 
   return (
-    <div>
-      {/* Hero */}
-      <section className="hex-gradient text-white py-20 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-block bg-white/20 text-sm font-semibold px-4 py-1.5 rounded-full mb-6 backdrop-blur-sm">
-            🚀 Public Investment Round Opening Soon — <Link to="/invest" className="underline">Join Waitlist</Link>
+    <div className="min-h-screen bg-gray-50">
+
+      {/* ── 1. Hero ──────────────────────────────────────────────────────────── */}
+      <section className="relative bg-hex-secondary overflow-hidden">
+        {/* Ambient glow decorations */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-32 -right-32 w-96 h-96 bg-hex-primary opacity-10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-hex-accent opacity-10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-hex-primary opacity-5 rounded-full blur-3xl" />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 text-center">
+          {/* Eyebrow pill */}
+          <div className="inline-flex items-center gap-2 bg-hex-primary/20 border border-hex-primary/30 text-hex-primary text-xs font-bold px-4 py-2 rounded-full mb-6 uppercase tracking-widest">
+            <Zap size={12} />
+            <span>Where Excellence Meets Impact</span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold mb-6 leading-tight">
-            Discover the Best<br />
-            <span className="text-yellow-300">Version of Yourself</span>
+
+          {/* Headline */}
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-white leading-tight tracking-tight mb-6">
+            Discover Human{' '}
+            <span className="text-hex-primary">Excellence</span>
           </h1>
-          <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto">
-            Premium products. Real sponsors. Transparent charity. One marketplace built for human excellence.
+
+          {/* Sub-headline */}
+          <p className="max-w-2xl mx-auto text-base sm:text-lg text-gray-300 leading-relaxed mb-10">
+            Shop premium products from elite creators — and with every purchase, a percentage
+            goes directly to causes that change lives. Real impact. Real products. Real people.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Link
               to="/marketplace"
-              className="bg-white text-hex-primary font-bold px-8 py-4 rounded-xl hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+              className="inline-flex items-center gap-2 bg-hex-primary hover:bg-orange-600 text-white font-bold text-base px-8 py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
             >
-              Shop Now <ArrowRight size={18} />
+              <ShoppingBag size={18} />
+              Shop Now
+              <ArrowRight size={16} />
             </Link>
-            <Link
-              to="/charity"
-              className="bg-hex-green/80 hover:bg-hex-green text-white font-bold px-8 py-4 rounded-xl transition-colors"
-            >
-              💚 See Our Charity Impact
-            </Link>
-          </div>
-          <div className="flex justify-center gap-8 mt-10 text-sm text-white/70">
-            <div><span className="text-white font-bold text-xl">12K+</span><br />Products Sold</div>
-            <div><span className="text-white font-bold text-xl">$43K+</span><br />Donated to Charity</div>
-            <div><span className="text-white font-bold text-xl">500+</span><br />Creators Earning</div>
-          </div>
-        </div>
-      </section>
-
-      {/* Categories */}
-      <section className="py-12 px-4 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl font-bold text-center text-hex-secondary mb-8">Shop by Category</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                to={`/marketplace?category=${cat.id}`}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 hover:border-hex-primary hover:shadow-md transition-all group"
-                style={{ borderColor: `${cat.color}30` }}
-              >
-                <span className="text-3xl">{cat.icon}</span>
-                <span className="text-xs font-semibold text-center text-gray-700 group-hover:text-hex-primary transition-colors">
-                  {cat.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Products */}
-      <section className="py-12 px-4 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-2xl font-bold text-hex-secondary">Featured Products</h2>
-              <p className="text-sm text-gray-500 mt-1">Top-rated items our community loves</p>
-            </div>
-            <Link to="/marketplace" className="text-hex-primary font-semibold text-sm flex items-center gap-1 hover:gap-2 transition-all">
-              View All <ArrowRight size={16} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featured.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Sponsors */}
-      <section className="py-12 px-4 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8">
-            <span className="inline-block bg-hex-gold/10 text-hex-gold text-xs font-bold px-3 py-1 rounded-full mb-3">
-              PREMIUM PARTNERS
-            </span>
-            <h2 className="text-2xl font-bold text-hex-secondary">Our Sponsors</h2>
-            <p className="text-sm text-gray-500 mt-1">Trusted brands backing our products</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-6">
-            {sponsors.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 bg-gray-50 border rounded-xl px-5 py-3 hover:shadow-md transition-all">
-                <div className="w-10 h-10 rounded-lg bg-hex-secondary flex items-center justify-center text-white font-bold text-sm">
-                  {s.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="font-semibold text-sm text-gray-900">{s.name}</p>
-                  <p className="text-xs text-gray-500">{s.totalReach} reach</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-6">
-            <Link to="/sponsors" className="text-hex-primary font-semibold text-sm hover:underline">
-              Become a Sponsor → Reach 100K+ shoppers
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Charity Counter */}
-      <CharityCounter />
-
-      {/* Creators */}
-      <section className="py-12 px-4 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8">
-            <span className="inline-block bg-hex-primary/10 text-hex-primary text-xs font-bold px-3 py-1 rounded-full mb-3">
-              CREATOR PROGRAM
-            </span>
-            <h2 className="text-2xl font-bold text-hex-secondary">Join 500+ Creators Earning with HEX</h2>
-            <p className="text-sm text-gray-500 mt-1">Post, promote, and earn commission on every sale</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            {creators.map((c) => (
-              <div key={c.id} className="text-center bg-gray-50 rounded-2xl p-4 hover:shadow-md transition-all">
-                <div className="w-12 h-12 bg-hex-primary rounded-full flex items-center justify-center text-white font-bold mx-auto mb-2">
-                  {c.avatar}
-                </div>
-                <p className="text-xs font-semibold text-gray-900 truncate">{c.name}</p>
-                <p className="text-xs text-gray-400">{c.followers} followers</p>
-                <p className="text-xs text-hex-green font-semibold mt-1">{c.earnings}/mo</p>
-              </div>
-            ))}
-          </div>
-          <div className="text-center">
             <Link
               to="/creators"
-              className="inline-block bg-hex-primary hover:bg-orange-600 text-white font-bold px-8 py-3 rounded-xl transition-colors"
+              className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-base px-8 py-4 rounded-xl transition-all duration-200 backdrop-blur-sm"
             >
-              Apply to Creator Program
+              <Star size={18} />
+              Join as Creator
+            </Link>
+          </div>
+
+          {/* Animated stats row */}
+          <div className="max-w-3xl mx-auto bg-white/5 border border-white/10 backdrop-blur-sm rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-white/10">
+              <StatBadge value="$43,300+" label="Donated to Charity" />
+              <StatBadge value="12,000+" label="Products Listed" />
+              <StatBadge value="6,000+" label="Active Creators" />
+              <StatBadge value="4" label="Active Causes" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 2. Category Grid ─────────────────────────────────────────────────── */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-hex-secondary mb-2">
+              Shop by Category
+            </h2>
+            <p className="text-gray-500 text-sm">Every category. Every cause. One platform.</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {categories.map((cat) => (
+              <CategoryCard key={cat.id} category={cat} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 3. Featured Products ─────────────────────────────────────────────── */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-hex-secondary mb-1">
+                Featured Products
+              </h2>
+              <p className="text-gray-500 text-sm">Handpicked by our community of creators</p>
+            </div>
+            <Link
+              to="/marketplace"
+              className="hidden sm:inline-flex items-center gap-1.5 text-hex-primary hover:text-orange-600 font-semibold text-sm transition-colors"
+            >
+              View All Products
+              <ArrowRight size={15} />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featuredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onAddToCart={addToCart}
+              />
+            ))}
+          </div>
+
+          {/* Mobile "View All" link */}
+          <div className="mt-8 text-center sm:hidden">
+            <Link
+              to="/marketplace"
+              className="inline-flex items-center gap-2 text-hex-primary hover:text-orange-600 font-semibold text-sm transition-colors"
+            >
+              View All Products
+              <ArrowRight size={15} />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Crowdfunding CTA */}
-      <section className="py-12 px-4 bg-hex-secondary text-white">
-        <div className="max-w-3xl mx-auto text-center">
-          <TrendingUp size={40} className="mx-auto text-hex-gold mb-4" />
-          <h2 className="text-3xl font-bold mb-4">Own a Piece of DiscoverHEX</h2>
-          <p className="text-gray-300 mb-6 text-lg">
-            We're opening a public investment round. Be an early investor and grow with us.
-            Starting at just $100.
-          </p>
-          <div className="bg-white/10 rounded-2xl p-6 mb-6 backdrop-blur-sm">
-            <div className="flex justify-center gap-8 text-center">
-              <div><div className="text-2xl font-bold text-hex-gold">$500K</div><div className="text-sm text-gray-300">Target Raise</div></div>
-              <div><div className="text-2xl font-bold text-hex-gold">$100</div><div className="text-sm text-gray-300">Min. Investment</div></div>
-              <div><div className="text-2xl font-bold text-hex-gold">3 Tiers</div><div className="text-sm text-gray-300">Investor Levels</div></div>
+      {/* ── 4. Charity Impact ────────────────────────────────────────────────── */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-hex-green/10 text-hex-green text-xs font-bold px-3 py-1.5 rounded-full mb-3 uppercase tracking-widest">
+                <Heart size={11} fill="currentColor" />
+                Real Impact
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-hex-secondary mb-1">
+                Where Your Money Goes
+              </h2>
+              <p className="text-gray-500 text-sm">
+                Every purchase funds one of these active campaigns
+              </p>
             </div>
+            <Link
+              to="/charity"
+              className="hidden sm:inline-flex items-center gap-1.5 text-hex-green hover:text-green-700 font-semibold text-sm transition-colors"
+            >
+              See Full Impact
+              <ArrowRight size={15} />
+            </Link>
           </div>
-          <Link
-            to="/invest"
-            className="inline-block bg-hex-gold hover:bg-yellow-500 text-hex-secondary font-bold px-10 py-4 rounded-xl transition-colors text-lg"
-          >
-            Learn More & Reserve Your Spot
-          </Link>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {charityCampaigns.map((campaign) => (
+              <CharityCampaignCard key={campaign.id} campaign={campaign} />
+            ))}
+          </div>
+
+          <div className="mt-8 text-center sm:hidden">
+            <Link
+              to="/charity"
+              className="inline-flex items-center gap-2 text-hex-green hover:text-green-700 font-semibold text-sm transition-colors"
+            >
+              See Full Impact
+              <ArrowRight size={15} />
+            </Link>
+          </div>
         </div>
       </section>
+
+      {/* ── 5. Sponsors Strip ────────────────────────────────────────────────── */}
+      <section className="py-12 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+              Trusted Sponsors
+            </p>
+            <Link
+              to="/sponsors"
+              className="text-xs font-semibold text-hex-primary hover:text-orange-600 transition-colors"
+            >
+              View all sponsors →
+            </Link>
+          </div>
+          {/* Horizontally scrollable strip */}
+          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+            {sponsors.map((sponsor) => (
+              <SponsorChip key={sponsor.id} sponsor={sponsor} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── 6. Creator CTA ───────────────────────────────────────────────────── */}
+      <section className="py-20 bg-hex-dark relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-hex-primary opacity-10 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-hex-accent opacity-10 rounded-full blur-3xl -translate-x-1/4 translate-y-1/4" />
+        </div>
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 bg-hex-primary/20 border border-hex-primary/30 text-hex-primary text-xs font-bold px-4 py-2 rounded-full mb-6 uppercase tracking-widest">
+            <TrendingUp size={12} />
+            For Creators
+          </div>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-5 leading-tight">
+            Turn Your Influence Into{' '}
+            <span className="text-hex-primary">Income &amp; Impact</span>
+          </h2>
+          <p className="text-gray-300 text-base sm:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+            Join 6,000+ creators earning commissions, building audiences, and making a real
+            difference. List products, grow your brand, and donate to the causes you care about.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              to="/creators"
+              className="inline-flex items-center gap-2 bg-hex-primary hover:bg-orange-600 text-white font-bold text-base px-8 py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            >
+              Join as Creator
+              <ArrowRight size={16} />
+            </Link>
+            <Link
+              to="/marketplace"
+              className="inline-flex items-center gap-2 border border-white/20 hover:bg-white/10 text-white font-semibold text-base px-8 py-4 rounded-xl transition-all duration-200"
+            >
+              Browse Products
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── 7. Stats Section ─────────────────────────────────────────────────── */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-hex-secondary mb-2">
+              The Numbers Don't Lie
+            </h2>
+            <p className="text-gray-500 text-sm">
+              Every stat below represents a life touched through your purchase
+            </p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Total Donated */}
+            <div className="bg-gradient-to-br from-hex-primary/5 to-hex-primary/10 border border-hex-primary/20 rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-300">
+              <div className="text-3xl sm:text-4xl font-extrabold text-hex-primary mb-2">
+                ${charityStats.totalDonated.toLocaleString()}
+              </div>
+              <div className="text-xs sm:text-sm font-semibold text-gray-600">
+                Total Donated
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-1">
+                <Heart size={12} className="text-hex-primary" fill="currentColor" />
+                <span className="text-[11px] text-gray-400">and counting</span>
+              </div>
+            </div>
+
+            {/* Orders with donation */}
+            <div className="bg-gradient-to-br from-hex-green/5 to-hex-green/10 border border-hex-green/20 rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-300">
+              <div className="text-3xl sm:text-4xl font-extrabold text-hex-green mb-2">
+                {charityStats.ordersWithDonation.toLocaleString()}
+              </div>
+              <div className="text-xs sm:text-sm font-semibold text-gray-600">
+                Orders with Donation
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-1">
+                <ShoppingBag size={12} className="text-hex-green" />
+                <span className="text-[11px] text-gray-400">impact purchases</span>
+              </div>
+            </div>
+
+            {/* Beneficiaries */}
+            <div className="bg-gradient-to-br from-hex-accent/5 to-hex-accent/10 border border-hex-accent/20 rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-300">
+              <div className="text-3xl sm:text-4xl font-extrabold text-hex-accent mb-2">
+                {charityStats.beneficiaries.toLocaleString()}
+              </div>
+              <div className="text-xs sm:text-sm font-semibold text-gray-600">
+                Lives Impacted
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-1">
+                <Users size={12} className="text-hex-accent" />
+                <span className="text-[11px] text-gray-400">beneficiaries</span>
+              </div>
+            </div>
+
+            {/* Active campaigns */}
+            <div className="bg-gradient-to-br from-hex-gold/5 to-hex-gold/10 border border-hex-gold/20 rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-300">
+              <div className="text-3xl sm:text-4xl font-extrabold text-hex-gold mb-2">
+                {charityStats.activeCampaigns}
+              </div>
+              <div className="text-xs sm:text-sm font-semibold text-gray-600">
+                Active Campaigns
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-1">
+                <TrendingUp size={12} className="text-hex-gold" />
+                <span className="text-[11px] text-gray-400">running now</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }
